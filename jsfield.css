@@ -1,0 +1,51 @@
+body, table
+{
+    font-family: Verdana, Helvetica, sans-serif;
+    font-size: 12px;
+}
+.captions
+{
+    font-weight: bold;
+    font-size: 13px;
+}
+.tblHeaders
+{
+    font-weight: bold;
+}
+.tblWide
+{
+    max-width: 820px;
+}
+.tblWide td
+{
+    padding: 3px;
+    vertical-align: top;
+    border: solid 1px silver;
+}
+.code_container
+{
+    padding: 10px;
+    background: #202020;
+    color: Lime;
+    font-size: 11px;
+    max-width: 830px;
+    margin-top: 5px;
+    margin-bottom: 15px;
+}
+.codeBlock
+{
+    display: block;
+}
+.italicsTexts
+{
+    font-style: italic;
+}
+a
+{
+    color: Blue;
+    text-decoration: none;
+}
+.jsfield_invalid
+{
+    background-color: #FFCCCC;
+}
