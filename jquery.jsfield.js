@@ -1,33 +1,51 @@
 /*
 * jquery.jsfield.js
 * jQuery Field Plugin
-* http://duncanmcintyre.net/plugins/jsfield/
+* http://duncanmcintyre.net/plugins/jsfield-1-1/
 *
 * Copyright (c) 2011 Duncan McIntyre http://duncanmcintyre.net
-* Version 1.0
+* Version 1.1
 * Dual licensed under the MIT and GPL licenses.
+*
+* Release Notes:
+* Added support for callbacks:
+* - onError
+* - onSuccess
+* - onMaxLength
+* - onMinLength
+*
+* Fixed copy/paste bug for firefox.
+*
 */
 
 (function ($) {
     $.fn.jsfield = function (options) {
         var settings = {
             type: 'default',
-            max: null,
-            min: null,
+            maxLength: null,
+            minLength: null,
             initMessage: '',
             errorMessage: '',
             successMessage: '',
-            minMessage: 'Enter at least ' + options.min + ' chracters.',
-            maxMessage: 'You can only enter upto ' + options.max + ' characters.',
-            format: 'm/d/yy',
-            separator: '/',
+            minLengthMessage: 'Enter at least ' + options.minLength + ' chracters.',
+            maxLengthMessage: 'You can only enter upto ' + options.maxLength + ' characters.',
+            dateFormat: 'm/d/yy',
+            dateSeparator: '/',
+            hourMasking: false,
             mandatory: false,
-            masking: false,
             capslock: false,
+            action: "",
+            className: "jsfield_invalid",
+            onMaxLength: null,
+            onMinLength: null,
+            onError: null,
+            onSuccess: null
+        };
+
+        var flag = {
             capsIsOn: null,
             capsIsOff: null,
-            action: "",
-            className: "jsfield_invalid"
+            ctrlKey: false
         };
 
         var init = {
@@ -59,8 +77,8 @@
                     }
                     //validate against settings
                     message.toggle(fld, settings, Boolean(inValidFlag == 0), e);
-                    methods.onFieldMin(fld, settings, e);
-                    methods.onFieldMax(fld, settings, e);
+                    methods.onMinLength(fld, settings, e);
+                    methods.onMaxLength(fld, settings, e);
                 }
             },
             numeric: function (fld, settings) {
@@ -69,6 +87,8 @@
                     $(fld).keypress(function (e) {
                         var mChar = e.keyCode ? String.fromCharCode(e.keyCode) : String.fromCharCode(e.charCode);
                         var mString = mChar.match(/[a-z ~`!@#$%^&*({})-_=+:;"',?|]/);
+                        if (flag.ctrlKey)
+                            return true;
                         listenNumeric(fld, mString, e);
                     });
                     $(fld).blur(function (e) {
@@ -100,8 +120,8 @@
 
                     //validate against settings
                     message.toggle(fld, settings, Boolean(inValidFlag == 0), e);
-                    methods.onFieldMin(fld, settings, e);
-                    methods.onFieldMax(fld, settings, e);
+                    methods.onMinLength(fld, settings, e);
+                    methods.onMaxLength(fld, settings, e);
                 }
             },
             decimal: function (fld, settings) {
@@ -110,6 +130,8 @@
                     $(fld).keypress(function (e) {
                         var mChar = e.keyCode ? String.fromCharCode(e.keyCode) : String.fromCharCode(e.charCode);
                         var mString = mChar.match(/[a-z ~`!@#$%^&*({})-_=+:;"',?|]/);
+                        if (flag.ctrlKey)
+                            return true;
                         listenDecimal(fld, mString, e);
                     });
                     $(fld).blur(function (e) {
@@ -158,19 +180,21 @@
 
                     //validate against settings
                     message.toggle(fld, settings, Boolean(inValidFlag == 0), e);
-                    methods.onFieldMin(fld, settings, e);
-                    methods.onFieldMax(fld, settings, e);
+                    methods.onMinLength(fld, settings, e);
+                    methods.onMaxLength(fld, settings, e);
                 }
             },
             hour: function (fld, settings) {
-                //settings.max = 5;
-                settings.maxMessage = "";
+                //settings.maxLength = 5;
+                settings.maxLengthMessage = "";
                 if (settings.action == "") {
                     message.init(fld, settings);
-                    if (settings.masking) {
+                    if (settings.hourMasking) {
                         $(fld).keypress(function (e) {
                             var mChar = e.keyCode ? String.fromCharCode(e.keyCode) : String.fromCharCode(e.charCode);
                             var mString = mChar.match(/[a-z ~`!@#$%^&*({})-_=+:;"',?|]/);
+                            if (flag.ctrlKey)
+                                return true;
                             listenToHour_Advance(fld, mString, e);
                         });
                         $(fld).keydown(function (e) {
@@ -183,6 +207,8 @@
                         $(fld).keypress(function (e) {
                             var mChar = e.keyCode ? String.fromCharCode(e.keyCode) : String.fromCharCode(e.charCode);
                             var mString = mChar.match(/[a-z ~`!@#$%^&*({})-_=+:;"',?|]/);
+                            if (flag.ctrlKey)
+                                return true;
                             listenToHour_Basic(fld, mString, e);
                         });
                     }
@@ -237,8 +263,8 @@
 
                     //validate against settings
                     message.toggle(fld, settings, Boolean(inValidFlag == 0), e);
-                    methods.onFieldMin(fld, settings, e);
-                    methods.onFieldMax(fld, settings, e);
+                    methods.onMinLength(fld, settings, e);
+                    methods.onMaxLength(fld, settings, e);
                 }
 
                 listenToHour_Advance = function (fld, mString, e) {
@@ -406,13 +432,13 @@
                     }
                     else if (e.type == "blur") {
                         validate.hour(fld, settings);
-                        //methods.onFieldMax(fld, settings, e);
+                        //methods.onMaxLength(fld, settings, e);
                         return;
                     }
 
                     //validate against settings
                     message.toggle(fld, settings, Boolean(inValidFlag == 0));
-                    methods.onFieldMax(fld, settings, e);
+                    methods.onMaxLength(fld, settings, e);
                 }
             },
             alpha: function (fld, settings) {
@@ -461,8 +487,8 @@
 
                     //validate against settings
                     message.toggle(fld, settings, Boolean(inValidFlag == 0), e);
-                    methods.onFieldMin(fld, settings, e);
-                    methods.onFieldMax(fld, settings, e);
+                    methods.onMinLength(fld, settings, e);
+                    methods.onMaxLength(fld, settings, e);
                 }
             },
             alphanumeric: function (fld, settings) {
@@ -501,8 +527,8 @@
 
                     //validate against settings
                     message.toggle(fld, settings, Boolean(inValidFlag == 0), e);
-                    methods.onFieldMin(fld, settings, e);
-                    methods.onFieldMax(fld, settings, e);
+                    methods.onMinLength(fld, settings, e);
+                    methods.onMaxLength(fld, settings, e);
                 }
             },
             email: function (fld, settings) {
@@ -511,10 +537,9 @@
                     message.init(fld, settings);
                     $(fld).keypress(function (e) {
                         var inValidFlag = 0;
-
                         message.toggle(fld, settings, Boolean(inValidFlag == 0), e);
-                        methods.onFieldMin(fld, settings, e);
-                        methods.onFieldMax(fld, settings, e);
+                        methods.onMinLength(fld, settings, e);
+                        methods.onMaxLength(fld, settings, e);
                     });
                     $(fld).blur(function (e) {
                         validate.email(fld, settings);
@@ -532,6 +557,8 @@
                     $(fld).keypress(function (e) {
                         var mChar = e.keyCode ? String.fromCharCode(e.keyCode) : String.fromCharCode(e.charCode);
                         var mString = mChar.match(/[a-z ~`!@#$%^&*({})-_=+:;"',?|]/);
+                        if (flag.ctrlKey)
+                            return true;
                         listenDate(fld, mString, e);
                     });
                     $(fld).blur(function (e) {
@@ -550,7 +577,7 @@
 
                     //restrict alpha and special characters
                     if (mString != null && e.type != "blur" && e.which != 0) {
-                        if (isNaN(parseInt(mString)) && mString != settings.separator) {
+                        if (isNaN(parseInt(mString)) && mString != settings.dateSeparator) {
                             inValidFlag += 1;
                             e.preventDefault();
                         }
@@ -562,8 +589,8 @@
 
                     //validate against settings
                     message.toggle(fld, settings, Boolean(inValidFlag == 0), e);
-                    methods.onFieldMin(fld, settings, e);
-                    methods.onFieldMax(fld, settings, e);
+                    methods.onMinLength(fld, settings, e);
+                    methods.onMaxLength(fld, settings, e);
                 }
             }
         }
@@ -574,8 +601,8 @@
                 var inValidFlag = 0;
 
                 message.toggle(fld, settings, Boolean(inValidFlag == 0));
-                methods.onFieldMin(fld, settings);
-                methods.onFieldMax(fld, settings);
+                methods.onMinLength(fld, settings);
+                methods.onMaxLength(fld, settings);
             },
             numeric: function (fld, settings) {
                 var fldValue = fld.value.toString();
@@ -587,8 +614,8 @@
                 }
 
                 message.toggle(fld, settings, Boolean(inValidFlag == 0));
-                methods.onFieldMin(fld, settings);
-                methods.onFieldMax(fld, settings);
+                methods.onMinLength(fld, settings);
+                methods.onMaxLength(fld, settings);
             },
             decimal: function (fld, settings) {
                 var fldValue = fld.value.toString();
@@ -600,8 +627,8 @@
                 }
 
                 message.toggle(fld, settings, Boolean(inValidFlag == 0));
-                methods.onFieldMin(fld, settings);
-                methods.onFieldMax(fld, settings);
+                methods.onMinLength(fld, settings);
+                methods.onMaxLength(fld, settings);
             },
             hour: function (fld, settings) {
                 var fldValue = fld.value.toString();
@@ -659,8 +686,8 @@
                 }
 
                 message.toggle(fld, settings, Boolean(inValidFlag == 0));
-                methods.onFieldMin(fld, settings);
-                methods.onFieldMax(fld, settings);
+                methods.onMinLength(fld, settings);
+                methods.onMaxLength(fld, settings);
             },
             alphanumeric: function (fld, settings) {
                 var fldValue = fld.value.toString();
@@ -674,15 +701,13 @@
                 }
 
                 message.toggle(fld, settings, Boolean(inValidFlag == 0));
-                methods.onFieldMin(fld, settings);
-                methods.onFieldMax(fld, settings);
+                methods.onMinLength(fld, settings);
+                methods.onMaxLength(fld, settings);
             },
             email: function (fld, settings) {
                 var fldValue = fld.value.toString();
                 var sVal;
 
-                if (fldValue == "" && !settings.mandatory)
-                    return;
                 tvalAT = fldValue.indexOf("@");
                 tvalDOT = fldValue.lastIndexOf(".");
                 sVal = fldValue.indexOf(' ');
@@ -698,17 +723,20 @@
                 if (sVal >= 0)
                     inValidFlag += 1;
 
+                if (fldValue == "" && !settings.mandatory)
+                    inValidFlag = 0;
+
                 message.toggle(fld, settings, Boolean(inValidFlag == 0));
-                methods.onFieldMin(fld, settings);
-                methods.onFieldMax(fld, settings);
+                methods.onMinLength(fld, settings);
+                methods.onMaxLength(fld, settings);
             },
             date: function (fld, settings) {
                 var inValidFlag = 0;
 
-                switch (settings.format) {
+                switch (settings.dateFormat) {
                     case "m/d/yy":
                         var fldValue = fld.value.toString();
-                        var fldValueSplit = fldValue.split(settings.separator);
+                        var fldValueSplit = fldValue.split(settings.dateSeparator);
                         var mString = fldValue.replace("/", "").match(/[a-z ~`!@#$%^&*({})-_=+:;"',?|]/);
 
                         if (fldValueSplit.length == 3) {
@@ -743,8 +771,8 @@
                         break;
                 }
                 message.toggle(fld, settings, Boolean(inValidFlag == 0));
-                methods.onFieldMin(fld, settings);
-                methods.onFieldMax(fld, settings);
+                methods.onMinLength(fld, settings);
+                methods.onMaxLength(fld, settings);
             }
         }
 
@@ -764,6 +792,8 @@
                         $(fld).after("<span class=\"jsfield_success\"> " + settings.successMessage + "</span>");
                     $(fld).removeClass(settings.className);
                     $(fld).attr("jsfield_isValid", true);
+                    if (settings.onSuccess != null)
+                        settings.onSuccess.call(fld);
                 }
                 else if (!isvalid) {
                     message.remove(fld);
@@ -771,6 +801,8 @@
                         $(fld).after("<span class=\"jsfield_error\"> " + settings.errorMessage + "</span>");
                     $(fld).addClass(settings.className);
                     $(fld).attr("jsfield_isValid", false);
+                    if (settings.onError != null)
+                        settings.onError.call(fld);
                 }
                 if (e && e.type == "blur" && isvalid && settings.mandatory && fld.value == "") {
                     message.remove(fld);
@@ -781,10 +813,14 @@
                 if (settings.mandatory && fld.nodeName.toLowerCase() != "select" && fldValue == "") {
                     $(fld).addClass(settings.className);
                     $(fld).attr("jsfield_isValid", false);
+                    if (settings.onError != null)
+                        settings.onError.call(fld);
                 }
                 else if (settings.mandatory && fld.nodeName.toLowerCase() === "select" && (fldValue == -1 || fldValue == "")) {
                     $(fld).addClass(settings.className);
                     $(fld).attr("jsfield_isValid", false);
+                    if (settings.onError != null)
+                        settings.onError.call(fld);
                 }
                 if (e != undefined && settings.capslock && e.type == "keypress") {
                     methods.checkCaps(fld, settings, e);
@@ -830,21 +866,21 @@
                 if ((theKeyCode >= 65 && theKeyCode <= 90) || (theKeyCode >= 97 && theKeyCode <= 122)) {
                     if (((theKeyCode >= 65 && theKeyCode <= 90) && !theShiftKey) || ((theKeyCode >= 97 && theKeyCode <= 122) && theShiftKey)) {
                         message.remove(fld);
-                        if (settings.capsIsOn == null) {
+                        if (flag.capsIsOn == null) {
                             $(fld).after("<span class=\"jsfield_error\" style=\"background:red;font-size:12px;font-weight:bold;color:#fff;padding:2px;\">Caps Lock Is On</span>");
                             $(fld).addClass(settings.className);
                             $(fld).attr("jsfield_isValid", false);
                         }
                         else {
-                            settings.capsIsOn.call();
+                            flag.capsIsOn.call();
                         }
                     }
                     else {
-                        if (settings.capsIsOff == null) {
+                        if (flag.capsIsOff == null) {
                             message.remove(fld);
                         }
                         else {
-                            settings.capsIsOff.call();
+                            flag.capsIsOff.call();
                         }
                     }
                 }
@@ -858,49 +894,57 @@
                     }
                 });
             },
-            onFieldMin: function (fld, settings, e) {
+            onMinLength: function (fld, settings, e) {
                 var fldValue = fld.value.toString();
-                if (settings.min != null && !isNaN(parseInt(settings.min))) {
-                    if (e != undefined && e.type == "blur" && fldValue.length < parseInt(settings.min)) {
+                if (settings.minLength != null && !isNaN(parseInt(settings.minLength))) {
+                    if (e != undefined && e.type == "blur" && fldValue.length < parseInt(settings.minLength)) {
                         e.preventDefault();
                         message.remove(fld);
-                        if (settings.minMessage != "")
-                            $(fld).after("<span class=\"jsfield_min\"> " + settings.minMessage + "</span>");
+                        if (settings.minLengthMessage != "")
+                            $(fld).after("<span class=\"jsfield_min\"> " + settings.minLengthMessage + "</span>");
                         $(fld).addClass(settings.className);
                         $(fld).attr("jsfield_isValid", false);
+                        if (settings.onMinLength != null)
+                            settings.onMinLength.call(fld);
                     }
                 }
             },
-            onFieldMax: function (fld, settings, e) {
+            onMaxLength: function (fld, settings, e) {
                 var fldValue = fld.value.toString();
                 var selectionText = methods.getSelection(fld);
 
-                if (e != undefined && settings.max != null && !isNaN(parseInt(settings.max)) && e.which != 0) {
-                    if (e.type == "keypress" && fldValue.length == parseInt(settings.max) && selectionText == "" && e.which != 0 && e.which != undefined) {
+                if (e != undefined && settings.maxLength != null && !isNaN(parseInt(settings.maxLength)) && e.which != 0) {
+                    if (e.type == "keypress" && fldValue.length >= parseInt(settings.maxLength) && selectionText == "" && e.which != 0 && e.which != undefined) {
                         if (e.which == 8)
                             return false;
                         e.preventDefault();
                         message.remove(fld);
-                        if (settings.maxMessage != "")
-                            $(fld).after("<span class=\"jsfield_max\"> " + settings.maxMessage + "</span>");
+                        if (settings.maxLengthMessage != "")
+                            $(fld).after("<span class=\"jsfield_max\"> " + settings.maxLengthMessage + "</span>");
                         $(fld).addClass(settings.className);
                         $(fld).attr("jsfield_isValid", false);
+                        if (settings.onMaxLength != null)
+                            settings.onMaxLength.call(fld);
                     }
-                    else if (e.type == "blur" && fldValue.length > parseInt(settings.max)) {
+                    else if (e.type == "blur" && fldValue.length > parseInt(settings.maxLength)) {
                         e.preventDefault();
                         message.remove(fld);
-                        if (settings.maxMessage != "")
-                            $(fld).after("<span class=\"jsfield_max\"> " + settings.maxMessage + "</span>");
+                        if (settings.maxLengthMessage != "")
+                            $(fld).after("<span class=\"jsfield_max\"> " + settings.maxLengthMessage + "</span>");
                         $(fld).addClass(settings.className);
                         $(fld).attr("jsfield_isValid", false);
+                        if (settings.onMaxLength != null)
+                            settings.onMaxLength.call(fld);
                     }
                 }
-                else if (settings.max != null && !isNaN(parseInt(settings.max)) && e == undefined && fldValue.length > parseInt(settings.max)) {
+                else if (settings.maxLength != null && !isNaN(parseInt(settings.maxLength)) && e == undefined && fldValue.length > parseInt(settings.maxLength)) {
                     message.remove(fld);
-                    if (settings.maxMessage != "")
-                        $(fld).after("<span class=\"jsfield_max\"> " + settings.maxMessage + "</span>");
+                    if (settings.maxLengthMessage != "")
+                        $(fld).after("<span class=\"jsfield_max\"> " + settings.maxLengthMessage + "</span>");
                     $(fld).addClass(settings.className);
                     $(fld).attr("jsfield_isValid", false);
+                    if (settings.onMaxLength != null)
+                        settings.onMaxLength.call(fld);
                 }
             },
             validate: function (fld) {
@@ -917,7 +961,8 @@
                 $(fld).val("");
             }
         };
-
+        $(this.selector).keydown(function (e) { if (e.ctrlKey) { flag.ctrlKey = true; } });
+        $(this.selector).keyup(function (e) { if (!e.ctrlKey) { flag.ctrlKey = false; } });
         if (options.type) {
             options.type = options.type.split(",");
             var selectors = this.selector.split(",")
